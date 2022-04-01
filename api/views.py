@@ -36,11 +36,9 @@ def consensus():
 
 def announce_new_block(block):
     for peer in peers:
-        url = "{}add_block".format(peer)
+        url = f"{peer}add_block/"
         headers = {'Content-Type': "application/json"}
-        requests.post(url,
-                      data=json.dumps(block.__dict__, sort_keys=True),
-                      headers=headers)
+        requests.post(url, data=json.dumps(block.__dict__), headers=headers)
 
 
 def create_chain_from_dump(chain_dump):
@@ -112,7 +110,16 @@ def register_new_peers(request):
     if not node_address:
         return Response("Invalid data", status=400)
     peers.add(node_address)
-    return get_chain()
+    peers.add(str(request.build_absolute_uri('/')))
+    chain_data = []
+    for block in blockchain.chain:
+        chain_data.append(block.__dict__)
+    data = {
+        "length": len(chain_data),
+        "chain": chain_data,
+        "peers": list(peers)
+    }
+    return Response(data, status=200)
 
 
 @api_view(['POST'])
@@ -121,11 +128,11 @@ def register_with_existing_node(request):
     node_address = request.data["node_address"]
     if not node_address:
         return Response("Invalid data", status=400)
-    print("host: ", request.get_host)
-    data = {"node_address": request.get_host}
+    print("host: ", request.build_absolute_uri('/'))
+    data = {"node_address": request.build_absolute_uri('/')}
     headers = {'Content-Type': "application/json"}
 
-    response = requests.post(node_address + "/register_node", data=json.dumps(data), headers=headers)
+    response = requests.post(node_address + "/register_node/", data=json.dumps(data), headers=headers)
     if response.status_code == 200:
         global blockchain
         global peers
